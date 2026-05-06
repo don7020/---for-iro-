@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ridge UPCloud 파일 생성기</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #ffffff; --bg2: #f7f6f3; --bg3: #f0ede8;
+    --text: #1a1a1a; --text2: #6b6b6b; --texth: #9e9e9e;
+    --border: rgba(0,0,0,0.12); --border2: rgba(0,0,0,0.22);
+    --acc: #1a1a1a; --acc-fg: #ffffff;
+    --ok: #0f6e56; --ok-bg: #e1f5ee;
+    --err: #993c1d; --err-bg: #faece7;
+    --info: #185fa5; --info-bg: #e6f1fb;
+    --r: 8px; --rl: 12px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1c; --bg2: #242424; --bg3: #2c2c2c;
+      --text: #f0ede8; --text2: #a0a0a0; --texth: #555;
+      --border: rgba(255,255,255,0.1); --border2: rgba(255,255,255,0.2);
+      --acc: #f0ede8; --acc-fg: #1c1c1c;
+      --ok: #5dcaa5; --ok-bg: #04342c;
+      --err: #f0997b; --err-bg: #4a1b0c;
+      --info: #85b7eb; --info-bg: #042c53;
+    }
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; background: var(--bg2); color: var(--text); min-height: 100vh; padding: 2rem 1rem; line-height: 1.6; }
+  .wrap { max-width: 800px; margin: 0 auto; }
+  .hd { display: flex; align-items: center; gap: 14px; margin-bottom: 2rem; }
+  .logo { width: 48px; height: 48px; background: var(--acc); border-radius: var(--r); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .logo span { color: var(--acc-fg); font-size: 11px; font-weight: 700; letter-spacing: 0.5px; }
+  .hd-t h1 { font-size: 20px; font-weight: 600; }
+  .hd-t p { font-size: 13px; color: var(--text2); margin-top: 2px; }
+  .card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--rl); padding: 1.5rem; margin-bottom: 1rem; }
+  .sec-label { font-size: 11px; font-weight: 700; letter-spacing: 0.7px; text-transform: uppercase; color: var(--texth); margin-bottom: 0.85rem; }
+  .drop { border: 1.5px dashed var(--border2); border-radius: var(--rl); padding: 2.5rem 1.5rem; text-align: center; cursor: pointer; transition: background .15s, border-color .15s; background: var(--bg2); }
+  .drop:hover, .drop.over { background: var(--bg3); border-color: var(--acc); }
+  .drop input { display: none; }
+  .drop-icon { font-size: 34px; margin-bottom: 10px; }
+  .drop h3 { font-size: 15px; font-weight: 600; margin-bottom: 5px; }
+  .drop p { font-size: 13px; color: var(--text2); }
+  .pill { display: inline-flex; align-items: center; gap: 7px; background: var(--ok-bg); color: var(--ok); border-radius: 99px; padding: 6px 14px; font-size: 13px; font-weight: 500; margin-top: 12px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { border: 0.5px solid var(--border2); border-radius: 99px; background: var(--bg); padding: 7px 16px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all .12s; color: var(--text); }
+  .chip:hover { border-color: var(--acc); }
+  .chip.on { background: var(--acc); color: var(--acc-fg); border-color: var(--acc); }
+  .stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 1.25rem; }
+  .stat { background: var(--bg2); border-radius: var(--r); padding: 14px 16px; }
+  .stat-l { font-size: 12px; color: var(--text2); margin-bottom: 3px; }
+  .stat-v { font-size: 22px; font-weight: 600; }
+  .tw { overflow-x: auto; border: 0.5px solid var(--border); border-radius: var(--r); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th { background: var(--bg2); padding: 10px 12px; text-align: left; font-weight: 600; font-size: 12px; color: var(--text2); border-bottom: 0.5px solid var(--border); white-space: nowrap; }
+  tbody td { padding: 9px 12px; border-bottom: 0.5px solid var(--border); white-space: nowrap; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: var(--bg2); }
+  .mono { font-family: 'SF Mono','Fira Code',monospace; font-size: 11px; color: var(--text2); }
+  .tr { text-align: right; }
+  .ellipsis { max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 1.25rem; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 11px 20px; border-radius: var(--r); font-size: 14px; font-weight: 500; cursor: pointer; border: none; transition: opacity .12s, background .12s; }
+  .btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+  .btn-p { background: var(--acc); color: var(--acc-fg); }
+  .btn-p:hover { opacity: .82; }
+  .btn-o { background: var(--bg); color: var(--text); border: 0.5px solid var(--border2); }
+  .btn-o:hover { background: var(--bg2); }
+  hr { border: none; border-top: 0.5px solid var(--border); margin: 1.25rem 0; }
+  .status { font-size: 13px; margin-top: 10px; min-height: 20px; }
+  .status.ok { color: var(--ok); }
+  .status.err { color: var(--err); }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 99px; font-size: 11px; font-weight: 600; background: var(--info-bg); color: var(--info); }
+  .hidden { display: none !important; }
+  .footer { text-align: center; font-size: 12px; color: var(--texth); margin-top: 2rem; padding-top: 1rem; border-top: 0.5px solid var(--border); }
+  @media (max-width: 520px) {
+    .stats { grid-template-columns: 1fr 1fr; }
+    .btn-row { flex-direction: column; }
+    .btn { justify-content: center; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hd">
+    <div class="logo"><span>RMG</span></div>
+    <div class="hd-t">
+      <h1>Ridge UPCloud 파일 생성기</h1>
+      <p>재고_거래-관리 시트 업로드 → UPCloudInventory + UPCloudItem 자동 생성</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="sec-label">Step 1 — 파일 업로드</div>
+    <div class="drop" id="drop">
+      <input type="file" id="fi" accept=".xlsx,.xls">
+      <div class="drop-icon">📂</div>
+      <h3>재고_거래-관리 시트를 업로드하세요</h3>
+      <p>클릭하거나 파일을 여기에 드래그 &amp; 드롭 (.xlsx)</p>
+    </div>
+    <div id="fpill" class="hidden"><div class="pill">✓ <span id="fname"></span></div></div>
+  </div>
+
+  <div class="card hidden" id="s2">
+    <div class="sec-label">Step 2 — 입고 회차 선택</div>
+    <div class="chips" id="chips"></div>
+  </div>
+
+  <div class="card hidden" id="s3">
+    <div class="sec-label">Step 3 — 미리보기 및 다운로드</div>
+    <div class="stats" id="stats"></div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:.75rem;">
+      <span style="font-size:14px;font-weight:500;">상품 목록</span>
+      <span class="badge" id="cnt"></span>
+    </div>
+    <div class="tw">
+      <table>
+        <thead><tr><th>#</th><th>바코드</th><th>상품명</th><th class="tr">수량</th><th class="tr">Cost / Price</th></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <hr>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:.75rem;">두 파일을 모두 다운로드하거나 필요한 파일만 선택하세요.</p>
+    <div class="btn-row">
+      <button class="btn btn-p" onclick="dlInventory()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        UPCloudInventory 다운로드
+      </button>
+      <button class="btn btn-o" onclick="dlItem()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        UPCloudItem 다운로드
+      </button>
+    </div>
+    <div class="status" id="msg"></div>
+  </div>
+
+  <div class="footer">Ridge Mountain Gear · UPCloud 파일 생성기 · 릿지 전용</div>
+</div>
+
+<script>
+let wb = null, products = [], selOrder = null;
+
+const drop = document.getElementById('drop');
+const fi   = document.getElementById('fi');
+drop.addEventListener('click', () => fi.click());
+drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); });
+drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('over'); load(e.dataTransfer.files[0]); });
+fi.addEventListener('change', e => { if (e.target.files[0]) load(e.target.files[0]); });
+
+function load(file) {
+  document.getElementById('fname').textContent = file.name;
+  document.getElementById('fpill').classList.remove('hidden');
+  const r = new FileReader();
+  r.onload = e => { wb = XLSX.read(e.target.result, { type: 'array' }); loadOrders(); };
+  r.readAsArrayBuffer(file);
+}
+
+function loadOrders() {
+  const ws = wb.Sheets['raw_입고'];
+  if (!ws) { setMsg('raw_입고 시트를 찾을 수 없습니다.', 'err'); return; }
+  const data = XLSX.utils.sheet_to_json(ws, { header: 1 });
+
+  // 헤더행에서 '입고 구분' 컬럼 위치 찾기
+  let inboundCol = 3;
+  for (let r = 0; r < Math.min(10, data.length); r++) {
+    const idx = (data[r]||[]).findIndex(v => String(v||'').trim() === '입고 구분');
+    if (idx !== -1) { inboundCol = idx; break; }
+  }
+
+  const set = new Set();
+  for (let i = 1; i < data.length; i++) {
+    const v = String((data[i]||[])[inboundCol]||'').trim();
+    if ((v.includes('월 입고') || v.includes('차 입고')) && v.length < 20) set.add(v);
+  }
+  const orders = [...set].sort();
+  const grid = document.getElementById('chips');
+  grid.innerHTML = '';
+  if (!orders.length) { setMsg('입고 회차를 찾을 수 없습니다.', 'err'); return; }
+  orders.forEach(o => {
+    const c = document.createElement('div');
+    c.className = 'chip'; c.textContent = o;
+    c.onclick = () => {
+      document.querySelectorAll('.chip').forEach(x => x.classList.remove('on'));
+      c.classList.add('on'); selOrder = o; process(o);
+    };
+    grid.appendChild(c);
+  });
+  document.getElementById('s2').classList.remove('hidden');
+  document.getElementById('s3').classList.add('hidden');
+}
+
+function process(order) {
+  const inWs = wb.Sheets['raw_입고'];
+  const stWs = wb.Sheets['재고'];
+  const bcWs = wb.Sheets['Barcode'];
+  if (!inWs || !stWs || !bcWs) { setMsg('필요한 시트(raw_입고, 재고, Barcode)가 없습니다.', 'err'); return; }
+
+  const inData = XLSX.utils.sheet_to_json(inWs, { header: 1 });
+  const stData = XLSX.utils.sheet_to_json(stWs, { header: 1 });
+  const bcData = XLSX.utils.sheet_to_json(bcWs, { header: 1 });
+
+  // ── raw_입고 헤더 찾기 ──
+  let inHRow = -1;
+  for (let r = 0; r < Math.min(10, inData.length); r++) {
+    if ((inData[r]||[]).some(v => String(v||'').trim() === 'Item number')) { inHRow = r; break; }
+  }
+  if (inHRow === -1) { setMsg('raw_입고 헤더를 찾을 수 없습니다.', 'err'); return; }
+
+  const inH = inData[inHRow];
+  const gc = name => inH.findIndex(h => String(h||'').trim().replace(/\s+/g,' ') === name);
+  const C_ORD  = gc('입고 구분');
+  const C_ITEM = gc('Item number');
+  const C_KOR  = gc('한글 제품명');
+  const C_COST = gc('100단위 올림');
+
+  // ── Barcode 시트: item_number → [{gtin, size}] ──
+  let bcHRow = -1;
+  for (let r = 0; r < Math.min(6, bcData.length); r++) {
+    if ((bcData[r]||[]).some(v => String(v||'').trim() === 'Item number')) { bcHRow = r; break; }
+  }
+  const bcH = bcData[bcHRow] || [];
+  const bcItem = bcH.findIndex(v => String(v||'').trim() === 'Item number');
+  const bcGtin = bcH.findIndex(v => String(v||'').trim().replace(/\s+$/,'') === 'Barcode');
+  const bcSize = bcH.findIndex(v => String(v||'').trim() === 'Size');
+
+  const gtinMap = {};
+  for (let r = bcHRow + 1; r < bcData.length; r++) {
+    const row = bcData[r] || [];
+    const item = String(row[bcItem]||'').trim();
+    const gtin = String(row[bcGtin]||'').trim();
+    const size = String(row[bcSize]||'').trim().toLowerCase();
+    if (!item || !gtin || gtin === 'nan' || !/^\d{12,13}$/.test(gtin)) continue;
+    if (!gtinMap[item]) gtinMap[item] = [];
+    gtinMap[item].push({ gtin, size });
+  }
+
+  // ── 재고 시트: item_number → {total, bySize} ──
+  let stHRow = -1;
+  for (let r = 0; r < Math.min(5, stData.length); r++) {
+    if ((stData[r]||[]).some(v => String(v||'').trim() === 'Item number')) { stHRow = r; break; }
+  }
+  const stH = stData[stHRow] || [];
+  const sItem  = stH.findIndex(v => String(v||'').trim() === 'Item number');
+  const sTotal = stH.findIndex(v => String(v||'').trim() === '재고합');
+  const SIZES  = ['Free','XXS','XS','S','M','L','XL','XXL'];
+  const sCols  = {};
+  SIZES.forEach(s => { sCols[s] = stH.findIndex(v => String(v||'').trim() === s); });
+
+  const stockMap = {};
+  for (let r = stHRow + 1; r < stData.length; r++) {
+    const row = stData[r] || [];
+    const item = String(row[sItem]||'').trim();
+    if (!item) continue;
+    const bySz = {};
+    SIZES.forEach(s => { bySz[s.toLowerCase()] = Number(row[sCols[s]]) || 0; });
+    stockMap[item] = { total: Number(row[sTotal]) || 0, bySz };
+  }
+
+  // ── 해당 입고 회차 상품 조합 ──
+  products = [];
+  const seen = new Set();
+
+  for (let r = inHRow + 1; r < inData.length; r++) {
+    const row = inData[r] || [];
+    if (String(row[C_ORD]||'').trim() !== order) continue;
+
+    const itemNum = String(row[C_ITEM]||'').trim();
+    if (!itemNum || seen.has(itemNum)) continue;
+    seen.add(itemNum);
+
+    const korName = String(row[C_KOR]||'').trim();
+    const cost    = Number(row[C_COST]) || 0;
+    const stock   = stockMap[itemNum] || { total: 0, bySz: {} };
+    const gtins   = gtinMap[itemNum]  || [];
+
+    // 사이즈별 GTIN이 있는지 확인
+    const sizeable = ['l','xl','xxl','xs','s','m'];
+    // 중복 GTIN 제거: 대소문자 통합 후 유니크하게
+    const seenGtins = new Set();
+    const uniqueGtins = gtins.filter(g => {
+      const key = g.gtin + '|' + g.size.toLowerCase();
+      if (seenGtins.has(g.gtin)) return false; // 같은 GTIN 중복 제거
+      seenGtins.add(g.gtin);
+      return true;
+    });
+    const sizedGtins = uniqueGtins.filter(g => sizeable.includes(g.size.toLowerCase()));
+
+    if (sizedGtins.length > 0) {
+      // 사이즈별로 행 분리 (재고 0인 사이즈는 제외)
+      sizedGtins.forEach(({ gtin, size }) => {
+        const sizeKey = size.toLowerCase();
+        const qty = stock.bySz[sizeKey] || 0;
+        if (qty === 0) return; // 재고 없으면 제외
+        const sizeLabel = sizeKey.toUpperCase();
+        products.push({ gtin, itemName: `${korName}_${sizeLabel}`, qty, cost });
+      });
+    } else {
+      // free / all 단일
+      const entry = uniqueGtins.find(g => ['free','all','os',''].includes(g.size)) || uniqueGtins[0];
+      const gtin  = entry ? entry.gtin : '';
+      const qty   = stock.total || stock.bySz['free'] || 0;
+      products.push({ gtin, itemName: `${korName}_free`, qty, cost });
+    }
+  }
+
+  if (!products.length) {
+    setMsg(`'${order}'에 해당하는 상품을 찾을 수 없습니다.`, 'err');
+    document.getElementById('s3').classList.add('hidden'); return;
+  }
+  render();
+}
+
+function render() {
+  const totalQty = products.reduce((s,p) => s + p.qty, 0);
+  const unique   = new Set(products.map(p => p.itemName.replace(/_[^_]+$/,''))).size;
+  document.getElementById('stats').innerHTML = `
+    <div class="stat"><div class="stat-l">SKU 수</div><div class="stat-v">${products.length}</div></div>
+    <div class="stat"><div class="stat-l">총 재고 수량</div><div class="stat-v">${totalQty.toLocaleString()}</div></div>
+    <div class="stat"><div class="stat-l">상품 종류</div><div class="stat-v">${unique}</div></div>`;
+  document.getElementById('cnt').textContent = products.length + '개';
+
+  const tbody = document.getElementById('tbody');
+  tbody.innerHTML = '';
+  products.forEach((p,i) => {
+    const tr = document.createElement('tr');
+    const gtinCell = p.gtin
+      ? `<span class="mono">${p.gtin}</span>`
+      : `<span style="color:var(--err);font-size:12px">바코드 없음</span>`;
+    tr.innerHTML = `
+      <td style="color:var(--texth);font-size:12px">${i+1}</td>
+      <td>${gtinCell}</td>
+      <td class="ellipsis" title="${p.itemName}">${p.itemName}</td>
+      <td class="tr">${p.qty}</td>
+      <td class="tr">${p.cost ? p.cost.toLocaleString()+'원' : '<span style="color:var(--texth)">-</span>'}</td>`;
+    tbody.appendChild(tr);
+  });
+  document.getElementById('s3').classList.remove('hidden');
+  setMsg('');
+}
+
+function dlInventory() {
+  const wb2 = XLSX.utils.book_new();
+  const rows = [['번호','태그','구분','구분명','코드','입력','바코드','상품명','수량','단가','소스']];
+  products.forEach((p,i) => rows.push([i+1,'','S','재고','0001','0',p.gtin,p.itemName,p.qty,'','']));
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [5,5,5,8,8,5,16,46,6,6,6].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb2, ws, 'Sheet1');
+  XLSX.writeFile(wb2, `UPCloudInventory_Ridge_${safe(selOrder)}.xlsx`);
+  setMsg('✓ UPCloudInventory 다운로드 완료', 'ok');
+}
+
+function dlItem() {
+  const wb2 = XLSX.utils.book_new();
+  const rows = [['Category1','Category2','Category3','ItemName','Barcode','Unit','Cost','Price','Qty','Tax','','extCode','PoPrice']];
+  products.forEach(p => rows.push(['Ridge','','',p.itemName,p.gtin,'',p.cost||'',p.cost||'',p.qty,'1',0,'','']));
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [8,6,6,46,16,6,10,10,6,5,5,8,8].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb2, ws, 'Sheet1');
+  XLSX.writeFile(wb2, `UPCloudItem_Ridge_${safe(selOrder)}.xlsx`);
+  setMsg('✓ UPCloudItem 다운로드 완료', 'ok');
+}
+
+function safe(s) { return (s||'order').replace(/\s/g,'_'); }
+function setMsg(t, cls) { const el = document.getElementById('msg'); el.textContent = t; el.className = 'status' + (cls ? ' '+cls : ''); }
+</script>
+</body>
+</html>
